@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_predict, cross_val_score
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
@@ -7,10 +7,19 @@ from sklearn.feature_selection import SelectFromModel
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor, plot_tree
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, confusion_matrix, precision_score, recall_score, f1_score
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 import matplotlib.pyplot as plt
+
+# Function to print metrics
+def print_metrics(y_true, y_pred, model_name):
+    mse = mean_squared_error(y_true, y_pred)
+    r2 = r2_score(y_true, y_pred)
+    
+    print(f'{model_name} Metrics:')
+    print(f'Mean Squared Error (MSE): {mse:.2f}')
+    print(f'R-squared: {r2:.2f}')
 
 # Load data from a CSV file
 file_path = 'Battery_RUL.csv'  # Replace with the actual path to your dataset
@@ -89,10 +98,81 @@ metrics = {
 
 # Print metrics for each model
 for model, metrics_dict in metrics.items():
-    print(f'{model} Metrics:')
-    print(f'Mean Squared Error (MSE): {metrics_dict["MSE"]:.2f}')
-    print(f'R-squared: {metrics_dict["R-squared"]:.2f}')
+    print_metrics(y_test, y_pred_rf, model)
     print('\n')
+
+# Cross-validation for Random Forest Regression
+cv_scores_rf = cross_val_score(pipeline_rf, X_downscaled, y_downscaled, cv=5, scoring='neg_mean_squared_error')
+y_pred_cv_rf = cross_val_predict(pipeline_rf, X_downscaled, y_downscaled, cv=5)
+
+# Cross-validation for k-Nearest Neighbors (KNN) Regression
+cv_scores_knn = cross_val_score(knn_reg, X_downscaled, y_downscaled, cv=5, scoring='neg_mean_squared_error')
+y_pred_cv_knn = cross_val_predict(knn_reg, X_downscaled, y_downscaled, cv=5)
+
+# Cross-validation for Support Vector Machine (SVM) Regression
+cv_scores_svm = cross_val_score(svm_reg, X_downscaled, y_downscaled, cv=5, scoring='neg_mean_squared_error')
+y_pred_cv_svm = cross_val_predict(svm_reg, X_downscaled, y_downscaled, cv=5)
+
+# Print cross-validation metrics for each model
+print("Cross-validation metrics for Random Forest Regression:")
+print_metrics(y_downscaled, y_pred_cv_rf, "Random Forest Regression")
+print('\n')
+
+print("Cross-validation metrics for k-Nearest Neighbors (KNN) Regression:")
+print_metrics(y_downscaled, y_pred_cv_knn, "k-Nearest Neighbors (KNN) Regression")
+print('\n')
+
+print("Cross-validation metrics for Support Vector Machine (SVM) Regression:")
+print_metrics(y_downscaled, y_pred_cv_svm, "Support Vector Machine (SVM) Regression")
+print('\n')
+
+# Calculate and print confusion matrix for each model
+def print_confusion_matrix(y_true, y_pred):
+    cm = confusion_matrix(y_true, y_pred)
+    print("Confusion Matrix:")
+    print(cm)
+
+# Convert regression output to binary classification
+threshold = 0.5
+y_binary_rf = (y_pred_rf > threshold).astype(int)
+y_binary_knn = (y_pred_knn_reg > threshold).astype(int)
+y_binary_svm = (y_pred_svm_reg > threshold).astype(int)
+
+# Print confusion matrix for each model
+print("Confusion Matrix for Random Forest Regression:")
+print_confusion_matrix(y_test, y_binary_rf)
+print('\n')
+
+print("Confusion Matrix for k-Nearest Neighbors (KNN) Regression:")
+print_confusion_matrix(y_test, y_binary_knn)
+print('\n')
+
+print("Confusion Matrix for Support Vector Machine (SVM) Regression:")
+print_confusion_matrix(y_test, y_binary_svm)
+print('\n')
+
+# Additional Metrics: Precision, Recall, F1-Score
+def print_classification_metrics(y_true, y_pred):
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+
+    print(f'Precision: {precision:.2f}')
+    print(f'Recall: {recall:.2f}')
+    print(f'F1-Score: {f1:.2f}')
+
+# Print classification metrics for each model
+print("Classification Metrics for Random Forest Regression:")
+print_classification_metrics(y_test, y_binary_rf)
+print('\n')
+
+print("Classification Metrics for k-Nearest Neighbors (KNN) Regression:")
+print_classification_metrics(y_test, y_binary_knn)
+print('\n')
+
+print("Classification Metrics for Support Vector Machine (SVM) Regression:")
+print_classification_metrics(y_test, y_binary_svm)
+print('\n')
 
 # Visualization: Predicted vs Actual Values
 plt.figure(figsize=(12, 6))
@@ -131,6 +211,8 @@ plt.figure(figsize=(12, 6))
 plot_tree(unpruned_tree_reg, filled=True, feature_names=X.columns)
 plt.title("Unpruned Decision Tree Regression")
 plt.show()
+
+
 
 # import pandas as pd
 # from sklearn.model_selection import train_test_split
